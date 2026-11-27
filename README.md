@@ -1,8 +1,14 @@
 # Estudio 58
 
 Bilingual (English / Spanish) online no-gi Jiu Jitsu academy by Jean Maltese.
-**Phase 1: clickable demo.** Everything runs on fake in-memory data, so it needs no accounts or keys.
+**Phase 3: Supabase database and logins.** Without keys it is still the clickable demo on fake in-memory data.
 Read `HANDOFF.md` first: it is the brief, and it says what is decided and what is still open.
+
+## Demo or Supabase
+
+- **No keys:** the full demo described below.
+- **Supabase:** set `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` (in Vercel, or in a local `.env` file, which git ignores). Logins, profiles, progress, bookmarks and Ask JLM then use the real database. Payments, video and site emails stay demo until their phases. HANDOFF.md §17 lists the dashboard settings this needs.
+- The database schema is `supabase/migrations/20261127_estudio58_core.sql`. It is already applied, so don't run it again.
 
 ## Run it
 
@@ -33,7 +39,9 @@ Requires Node 20 or newer.
 
 | Folder | What is in it |
 |---|---|
-| `src/adapters/` | **One file per outside service:** `database.ts` (Supabase), `auth.ts` (Supabase Auth), `payments.ts` (Stripe), `video.ts` (Mux), `email.ts` (Resend). Each one exports an interface plus a demo version. Later phases swap the demo version for the real one. Pages never call a service directly. |
+| `src/adapters/` | **One file per outside service:** `database.ts` (Supabase), `auth.ts` (Supabase Auth), `payments.ts` (Stripe), `video.ts` (Mux), `email.ts` (Resend). Each one exports an interface plus a demo version. Later phases swap the demo version for the real one. Pages never call a service directly. The Supabase versions are in `src/adapters/supabase/`. |
+| `api/` | Vercel functions that need server-only keys. `delete-account.ts` deletes a member's login. |
+| `supabase/migrations/` | The database schema, tables and row-level security. |
 | `src/demo/` | The fake data (`seed.ts`, every record marked `isDemo`) and the in-memory store. Delete before launch. |
 | `src/i18n/` | i18next setup, browser-language detection, and `locales/en.ts` + `locales/es.ts`. **Every visible word lives here.** `es.ts` is typed against `en.ts`, so a missing Spanish key fails the build. |
 | `src/lib/access.ts` | Membership rules in one place: who has access, monthly question/review limits, coaching places. |

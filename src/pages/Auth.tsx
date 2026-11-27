@@ -76,15 +76,28 @@ export function SignupPage() {
   const [emailV, setEmail] = useState('');
   const [pw, setPw] = useState('');
   const [err, setErr] = useState<{ field: 'email' | 'password' | 'form'; msg: string } | null>(null);
+  const [sentTo, setSentTo] = useState<string | null>(null);
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validEmail(emailV)) { setErr({ field: 'email', msg: t('auth.errors.invalidEmail') }); return; }
     if (pw.length < 8) { setErr({ field: 'password', msg: t('auth.errors.weakPassword') }); return; }
-    const res = await auth.signUp({ email: emailV, password: pw, lang });
-    if (!res.ok) { setErr({ field: res.error === 'emailTaken' ? 'email' : 'form', msg: t(`auth.errors.${res.error as AuthError}`) }); return; }
     const q = query.toString();
-    navigate(lp(lang, `/onboarding${q ? `?${q}` : ''}`));
+    const onboarding = lp(lang, `/onboarding${q ? `?${q}` : ''}`);
+    const res = await auth.signUp({ email: emailV, password: pw, lang, redirectPath: onboarding });
+    if (!res.ok) { setErr({ field: res.error === 'emailTaken' ? 'email' : 'form', msg: t(`auth.errors.${res.error as AuthError}`) }); return; }
+    // Supabase with "Confirm email" on: no session until the emailed link is opened.
+    if (res.verify) { setSentTo(emailV.trim()); return; }
+    navigate(onboarding);
   };
+  if (sentTo) {
+    return (
+      <AuthShell title={t('auth.verifyTitle')}>
+        <p className="card p-4">{t('auth.verifyBody', { email: sentTo })}</p>
+        <p className="mt-4 text-sm text-muted">{t('auth.verifyNext')}</p>
+        <Link className="mt-6 inline-block text-sm text-muted hover:text-gold" to={lp(lang, '/login')}>← {t('auth.loginTitle')}</Link>
+      </AuthShell>
+    );
+  }
   return (
     <AuthShell title={t('auth.signupTitle')}>
       <form onSubmit={submit} className="space-y-4" noValidate>
@@ -101,21 +114,55 @@ export function SignupPage() {
   );
 }
 
+/** Reached from the reset link in the email (…/reset-password?mode=update), signed in by that link. */
+function NewPasswordForm() {
+  const { t } = useTranslation();
+  const lang = useLang();
+  const { navigate } = useRouter();
+  const toast = useToast();
+  const me = auth.useSession();
+  const [pw, setPw] = useState('');
+  const [err, setErr] = useState<string | null>(null);
+  const submit = async (e: FormEvent) => {
+    e.preventDefault();
+    if (pw.length < 8) { setErr(t('auth.errors.weakPassword')); return; }
+    const res = await auth.updatePassword(pw);
+    if (!res.ok) { setErr(t(`auth.errors.${res.error}`)); return; }
+    toast(t('auth.passwordSaved'));
+    navigate(lp(lang, me && hasAccess(me) ? '/dashboard' : '/membership'), { replace: true });
+  };
+  return (
+    <AuthShell title={t('auth.newPasswordTitle')}>
+      <form onSubmit={submit} className="space-y-4" noValidate>
+        <Field label={t('auth.newPassword')} hint={t('auth.passwordHint')} error={err}>{(id) => <PasswordInput id={id} value={pw} onChange={setPw} autoComplete="new-password" />}</Field>
+        <button className="btn-gold w-full">{t('auth.savePassword')}</button>
+      </form>
+    </AuthShell>
+  );
+}
+
 export function ResetPage() {
   const { t } = useTranslation();
   const lang = useLang();
-  usePageMeta('meta.login', { title: t('auth.resetTitle') });
+  const { query } = useRouter();
+  const me = auth.useSession();
+  const ready = auth.useReady();
+  usePageMeta('meta.login', { title: t('auth.resetTitle'), index: false });
   const [emailV, setEmail] = useState('');
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState<string | null>(null);
+  const updating = query.get('mode') === 'update';
   const submit = async (e: FormEvent) => {
     e.preventDefault();
     if (!validEmail(emailV)) { setErr(t('auth.errors.invalidEmail')); return; }
     await auth.requestPasswordReset(emailV, lang);
     setSent(true);
   };
+  if (updating && !ready) return null;
+  if (updating && me) return <NewPasswordForm />;
   return (
     <AuthShell title={t('auth.resetTitle')}>
+      {updating && !sent && <p className="err mb-4" role="alert">{t('auth.linkExpired')}</p>}
       {sent ? <p className="card p-4">{t('auth.resetSent')}</p> : (
         <form onSubmit={submit} className="space-y-4" noValidate>
           <p className="text-muted">{t('auth.resetBody')}</p>

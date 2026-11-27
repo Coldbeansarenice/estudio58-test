@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Estudio 58 — bilingual online no-gi BJJ academy by Jean Maltese. Phase 1: clickable demo.",
+  "description": "Estudio 58 — bilingual online no-gi BJJ academy by Jean Maltese. Phase 3: Supabase database and logins (demo mode without keys).",
   "scripts": {
     "dev": "vite --host",
     "build": "tsc -b && vite build",
@@ -11,6 +11,7 @@
     "typecheck": "tsc -b --noEmit"
   },
   "dependencies": {
+    "@supabase/supabase-js": "^2.49.0",
     "i18next": "^25.6.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",

@@ -35,7 +35,7 @@ function Overview() {
   const waiting = data.requests.filter((r) => r.status === 'new' || r.status === 'in_progress').length;
   const since = Date.now() - 30 * 86400000;
   const fresh = members.filter((m) => new Date(m.joinedAt).getTime() >= since).length;
-  const used = coachingPlacesUsed(data.members);
+  const used = coachingPlacesUsed(data);
   return (
     <div className="space-y-8">
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">

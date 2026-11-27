@@ -18,8 +18,8 @@ export function TierCards({ autoOpen }: { autoOpen?: TierId | null }) {
   const data = db.useData();
   const s = data.settings;
   const current = activeTier(me);
-  const full = coachingFull(data.members, s);
-  const used = coachingPlacesUsed(data.members);
+  const full = coachingFull(data, s);
+  const used = coachingPlacesUsed(data);
   const onWaitlist = !!me && data.waitlist.some((w) => w.memberId === me.id);
 
   const [confirm, setConfirm] = useState<TierId | null>(null);
@@ -137,7 +137,9 @@ export function TierCards({ autoOpen }: { autoOpen?: TierId | null }) {
               <p className="font-display text-xl font-bold uppercase">{tierName(demoCheckout)}</p>
               <p className="tabular-nums">{money(s.prices[demoCheckout], lang)} {t('common.perMonth')} · {t('common.vatIncluded')}</p>
             </div>
-            <button className="btn-gold w-full" onClick={simulateWebhook}>{t('membership.simulate')}</button>
+            {db.mode === 'demo'
+              ? <button className="btn-gold w-full" onClick={simulateWebhook}>{t('membership.simulate')}</button>
+              : <p className="rounded-[4px] border border-gold/40 bg-gold/[0.06] p-3 text-sm">{t('membership.serverOnly')}</p>}
           </div>
         )}
       </Modal>

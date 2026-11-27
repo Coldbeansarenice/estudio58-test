@@ -18,7 +18,8 @@ function DemoPortal({ me, open, onClose }: { me: Member; open: boolean; onClose:
     <Modal open={open} onClose={onClose} title={t('portal.title')}>
       <p className="mb-4 rounded-[4px] border border-gold/40 bg-gold/[0.06] p-3 text-sm">{t('portal.demo')}</p>
       <p className="mb-4 text-sm"><StatusLine me={me} /></p>
-      {s.tier && (
+      {db.mode === 'supabase' && <p className="text-sm text-muted">{t('membership.serverOnly')}</p>}
+      {s.tier && db.mode === 'demo' && (
         <>
           <p className="label">{t('portal.changeTo')}</p>
           <div className="grid gap-2">
@@ -81,7 +82,8 @@ export function AccountPage({ me }: { me: Member }) {
   const word = lang === 'es' ? 'ELIMINAR' : 'DELETE';
 
   const saveProfile = async () => {
-    await db.updateProfile(me.id, { firstName: name.trim(), belt, interests: ints, lang: prefLang });
+    try { await db.updateProfile(me.id, { firstName: name.trim(), belt, interests: ints, lang: prefLang }); }
+    catch { toast(t('auth.errors.generic')); return; }
     toast(t('common.saved'));
     if (prefLang !== lang) { rememberLang(prefLang); navigate(lp(prefLang, '/account'), { replace: true }); }
   };
@@ -185,7 +187,10 @@ export function AccountPage({ me }: { me: Member }) {
           <Field label={t('account.deleteConfirm')}>{(id) => <input id={id} className="input" value={delText} onChange={(e) => setDelText(e.target.value)} autoComplete="off" />}</Field>
         </div>
         <button className="btn-danger mt-4 w-full" disabled={delText.trim().toUpperCase() !== word || (access && !me.subscription.cancelAtPeriodEnd && me.role !== 'admin')}
-          onClick={async () => { await db.deleteAccount(me.id); setDel(false); navigate(lp(lang, '')); }}>
+          onClick={async () => {
+            try { await db.deleteAccount(me.id); } catch { toast(t('auth.errors.generic')); return; }
+            setDel(false); navigate(lp(lang, ''));
+          }}>
           {t('account.deleteButton')}
         </button>
       </Modal>

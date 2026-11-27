@@ -24,8 +24,10 @@ function Redirect({ to }: { to: string }) {
 /** Members-only gate. Access comes from the subscription status only. */
 function Members({ children, admin = false, allowNoPlan = false }: { children: (me: Member) => ReactNode; admin?: boolean; allowNoPlan?: boolean }) {
   const me = auth.useSession();
+  const ready = auth.useReady();
   const lang = useLang();
   const { pathname, query } = useRouter();
+  if (!ready) return null; // still checking the saved session: don't bounce a signed-in member to log in
   if (!me) {
     const here = pathname + (query.toString() ? `?${query}` : '');
     return <Redirect to={lp(lang, `/login?next=${encodeURIComponent(here)}`)} />;

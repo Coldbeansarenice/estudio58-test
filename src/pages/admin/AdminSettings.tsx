@@ -44,7 +44,7 @@ export function AdminSettings() {
   const [priceText, setPriceText] = useState<Record<string, string>>(() => ({
     academy: euros(s.prices.academy), review: euros(s.prices.review), coaching: euros(s.prices.coaching), oneOffQuestion: euros(s.prices.oneOffQuestion),
   }));
-  const used = coachingPlacesUsed(data.members);
+  const used = coachingPlacesUsed(data);
   const patch = (p: Partial<SiteSettings>) => setS((x) => ({ ...x, ...p }));
   const save = async () => {
     const prices = { ...s.prices, ...Object.fromEntries(Object.entries(priceText).map(([k, v]) => [k, toCents(v)])) } as SiteSettings['prices'];
