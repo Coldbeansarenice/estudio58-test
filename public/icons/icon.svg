@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <rect width="512" height="512" fill="#0A0A0A"/>
+  <text x="256" y="300" text-anchor="middle" font-family="'Barlow Condensed','Oswald','Arial Narrow',sans-serif" font-weight="800" font-size="230" fill="#F5F5F5" letter-spacing="-4">E58</text>
+  <rect x="136" y="346" width="80" height="14" fill="#F2B90F"/>
+  <rect x="216" y="346" width="80" height="14" fill="#00247D"/>
+  <rect x="296" y="346" width="80" height="14" fill="#CF142B"/>
+</svg>

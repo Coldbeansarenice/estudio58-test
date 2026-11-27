@@ -1,0 +1,28 @@
+{
+  "name": "estudio58",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Estudio 58 — bilingual online no-gi BJJ academy by Jean Maltese. Phase 1: clickable demo.",
+  "scripts": {
+    "dev": "vite --host",
+    "build": "tsc -b && vite build",
+    "preview": "vite preview --host",
+    "typecheck": "tsc -b --noEmit"
+  },
+  "dependencies": {
+    "i18next": "^25.6.0",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "react-i18next": "^16.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.16",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.1.0",
+    "tailwindcss": "^4.1.16",
+    "typescript": "~5.9.3",
+    "vite": "^7.1.12"
+  }
+}
