@@ -1,17 +1,19 @@
 // DATABASE ADAPTER (content, profiles, progress, Ask JLM, settings)
-// Phase 1 (now): demo, backed by the in-memory store in src/demo.
-// Phase 3: replace `demoDb` with a Supabase version (Postgres + row-level security).
-//   Rules the real version must keep (HANDOFF.md section 14):
+// Supabase (./supabase/database.ts) when VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY
+// are set; otherwise the demo below, backed by the in-memory store in src/demo.
+//   Rules both keep (HANDOFF.md section 14):
 //   - RLS on every table with member data or restricted content.
 //   - Members change only their own profile, bookmarks, progress and requests.
 //   - Private requests are never visible to other members.
-//   - Tier limits are checked on the server (an RPC / edge function), as `createRequest` does here.
+//   - Tier limits are checked on the server (create_request() in Postgres); the demo imitates it.
 import { demoStore, newId, useDemoState, type DemoState } from '../demo/store';
 import { allowance } from '../lib/access';
 import type {
   AskRequest, Category, Course, Member, RequestReply, RequestStatus, SiteSettings, Video,
 } from '../types';
 import { email, OWNER_INBOX } from './email';
+import { supabase } from './supabase/client';
+import { supabaseDb } from './supabase/database';
 
 export type CreateRequestInput = Omit<AskRequest, 'id' | 'status' | 'createdAt' | 'replies' | 'publicApproved'>;
 
@@ -19,12 +21,16 @@ export interface DatabaseAdapter {
   readonly mode: 'demo' | 'supabase';
   /** Reactive read of everything this member may see (the real version caches query results). */
   useData(): DemoState;
+  /** The same data, read outside React (used by other adapters). */
+  snapshot(): DemoState;
   updateProfile(memberId: string, patch: Partial<Pick<Member, 'firstName' | 'lang' | 'belt' | 'interests'>>): Promise<void>;
   deleteAccount(memberId: string): Promise<void>;
   saveProgress(memberId: string, videoId: string, positionSec: number, completed: boolean): Promise<void>;
   toggleBookmark(memberId: string, videoId: string): Promise<void>;
   markNoticesRead(memberId: string): Promise<void>;
-  createRequest(input: CreateRequestInput): Promise<{ ok: true; id: string } | { ok: false; error: 'limitReached' | 'notAllowed' }>;
+  createRequest(input: CreateRequestInput): Promise<{ ok: true; id: string } | { ok: false; error: 'limitReached' | 'notAllowed' | 'failed' }>;
+  /** Coaching waitlist: needs an account, no payment. */
+  joinWaitlist(memberId: string): Promise<void>;
   // Admin only (the real version checks the admin role on the server):
   replyToRequest(requestId: string, reply: Omit<RequestReply, 'id' | 'createdAt'>): Promise<void>;
   setRequestStatus(requestId: string, status: RequestStatus): Promise<void>;
@@ -44,6 +50,14 @@ const upsert = <T extends { id: string }>(list: T[], item: T) =>
 const demoDb: DatabaseAdapter = {
   mode: 'demo',
   useData: useDemoState,
+  snapshot: demoStore.get,
+  async joinWaitlist(memberId) {
+    const s = demoStore.get();
+    if (s.waitlist.some((w) => w.memberId === memberId)) return;
+    demoStore.set((st) => ({ waitlist: [...st.waitlist, { memberId, createdAt: new Date().toISOString(), invited: false }] }));
+    const m = s.members.find((x) => x.id === memberId);
+    await email.send('waitlistOwner', OWNER_INBOX, 'es', { email: m?.email ?? '' });
+  },
   async updateProfile(memberId, patch) {
     demoStore.set((s) => ({ members: s.members.map((m) => (m.id === memberId ? { ...m, ...patch } : m)) }));
   },
@@ -129,4 +143,4 @@ const demoDb: DatabaseAdapter = {
   },
 };
 
-export const db: DatabaseAdapter = demoDb;
+export const db: DatabaseAdapter = supabase ? supabaseDb : demoDb;

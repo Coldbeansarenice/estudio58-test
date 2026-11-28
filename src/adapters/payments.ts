@@ -6,10 +6,13 @@
 //   - Access changes ONLY in the Stripe webhook handler on the server, never on the
 //     checkout redirect. The demo mirrors this: `demoWebhook` is the only place that
 //     changes a subscription, and the UI has to call it explicitly ("simulate webhook").
+//   - With Supabase on (Phase 3), subscriptions are read-only from the website, so the
+//     simulated webhook only works in the full demo; pages hide it when db.mode is 'supabase'.
 import { demoStore } from '../demo/store';
 import { coachingFull, TIER_RANK } from '../lib/access';
 import type { Member, Subscription, TierId } from '../types';
-import { email, OWNER_INBOX } from './email';
+import { db } from './database';
+import { email } from './email';
 
 export type CheckoutResult =
   | { kind: 'demo'; tier: TierId }
@@ -39,7 +42,7 @@ export const demoWebhook = {
   checkoutCompleted(memberId: string, tier: TierId) {
     const s = demoStore.get();
     // Server re-checks places at the moment of payment.
-    if (tier === 'coaching' && coachingFull(s.members, s.settings)) return false;
+    if (tier === 'coaching' && coachingFull(s, s.settings)) return false;
     patchSub(memberId, { tier, status: 'active', periodEnd: monthFromNow(), cancelAtPeriodEnd: false, pendingTier: null });
     const m = s.members.find((x) => x.id === memberId);
     if (m) void email.send('welcome', m.email, m.lang);
@@ -50,7 +53,7 @@ export const demoWebhook = {
     if (!cur || cur === tier) return 'none' as const;
     if (TIER_RANK[tier] > TIER_RANK[cur]) {
       const s = demoStore.get();
-      if (tier === 'coaching' && coachingFull(s.members, s.settings)) return 'coachingFull' as const;
+      if (tier === 'coaching' && coachingFull(s, s.settings)) return 'coachingFull' as const;
       patchSub(member.id, { tier, pendingTier: null }); // upgrade: now, pay the difference
       return 'upgraded' as const;
     }
@@ -76,24 +79,18 @@ const demoPayments: PaymentsAdapter = {
   mode: 'demo',
   async startCheckout(memberId, tier) {
     if (!memberId) return { kind: 'refused', reason: 'notSignedIn' };
-    const s = demoStore.get();
+    const s = db.snapshot(); // demo store, or the Supabase data (with the server's coaching count)
     const m = s.members.find((x) => x.id === memberId);
     if (m?.subscription.tier && (m.subscription.status === 'active' || m.subscription.status === 'past_due')) {
       return { kind: 'refused', reason: 'alreadySubscribed' };
     }
     // Server-side rule: refuse Coaching checkout when places are full, however the page was reached.
-    if (tier === 'coaching' && coachingFull(s.members, s.settings)) return { kind: 'refused', reason: 'coachingFull' };
+    if (tier === 'coaching' && coachingFull(s, s.settings)) return { kind: 'refused', reason: 'coachingFull' };
     return { kind: 'demo', tier };
   },
   async payOneOffQuestion() { return { kind: 'demo' }; },
   async openPortal() { return { kind: 'demo' }; },
-  async joinWaitlist(memberId) {
-    const s = demoStore.get();
-    if (s.waitlist.some((w) => w.memberId === memberId)) return;
-    demoStore.set((st) => ({ waitlist: [...st.waitlist, { memberId, createdAt: new Date().toISOString(), invited: false }] }));
-    const m = s.members.find((x) => x.id === memberId);
-    await email.send('waitlistOwner', OWNER_INBOX, 'es', { email: m?.email ?? '' });
-  },
+  async joinWaitlist(memberId) { await db.joinWaitlist(memberId); },
 };
 
 export const payments: PaymentsAdapter = demoPayments;

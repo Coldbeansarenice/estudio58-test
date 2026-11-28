@@ -2,7 +2,7 @@
 
 > Read this file first at the start of every session. Update it at the end of every phase.
 > Items marked **[OPEN]** are not decided yet. Ask the owner before building them.
-> Version 2 (26 Nov 2026): merges the owner's original brief with the useful parts of a Lovable-generated brief.
+> Version 2 (26 Nov 2026), status updated 27 Nov 2026 (Phase 3): merges the owner's original brief with the useful parts of a Lovable-generated brief.
 
 ## 1. The product in one line
 
@@ -201,7 +201,7 @@ Non-negotiable rules:
 - Every button does something. No dead links.
 - GDPR: cookie consent for non-essential tracking only, account deletion, data export on request, private member pages not indexed. Localised titles, meta descriptions, hreflang and Open Graph tags on public pages.
 
-Proposed tables: profiles, user_roles, subscriptions, categories, videos, video_versions (per language: title, description, video asset, subtitles), courses, course_versions, course_lessons, watch_progress, bookmarks, requests (Ask JLM), request_replies, notifications, site_settings.
+Tables (live in Supabase since Phase 3; full schema in `supabase/migrations/20261127_estudio58_core.sql`): profiles, user_roles, subscriptions, waitlist, categories, videos, video_versions, video_assets (playback ids, admin only), courses, course_versions, course_lessons, watch_progress, bookmarks, requests (Ask JLM), request_replies, notifications, site_settings.
 
 ## 15. Plan and dates (target: ready mid-January 2027)
 
@@ -226,7 +226,22 @@ Proposed tables: profiles, user_roles, subscriptions, categories, videos, video_
 
 ## 17. Status
 
-- Phase 0: in progress (v2 of this brief, 26 Nov 2026).
+- Phase 0: in progress (v2 of this brief, 26 Nov 2026). GitHub repo: Coldbeansarenice/estudio58-test. Phase 3 is on the branch `phase-3-supabase`, in a pull request into main.
+- **Phase 1: built (26 Nov 2026).** Clickable demo with fake in-memory data, every page in EN/ES (i18next, browser detection, English default), Gold lead design, mobile-first, installable PWA. Each outside service sits behind its own adapter in `src/adapters/` (all in demo mode). See README.md for how to run it and the demo accounts.
+  - Checked: TypeScript, every translation key present in both languages, every page crawled in both languages for each demo account, phone and laptop layouts, language redirect, deep links, PWA manifest and service worker.
+  - Not yet checked: a real `npm install && npm run build` (the build machine used for Phase 1 had no package access). Do this first in Phase 2.
+  - Proposed in Phase 1, owner to confirm: localised paths keep English slugs (`/es/library`, not `/es/biblioteca`); the draft FAQ is built only from facts in this brief.
+- **Phase 3: code written (27 Nov 2026), not yet run.** Supabase database and logins.
+  - **Database:** set up and applied by the owner. The schema is in `supabase/migrations/20261127_estudio58_core.sql`. **Don't run it again.** If the Supabase CLI is used later, first mark it as already applied (`supabase migration repair --status applied 20261127`), or `supabase db push` will try to run it a second time.
+  - **Switch:** the site uses Supabase when both `VITE_SUPABASE_URL` and `VITE_SUPABASE_PUBLISHABLE_KEY` are set, and stays in the full demo (DEMO bar, fake accounts) when either is missing. Code: `src/adapters/supabase/` (`client.ts`, `data.ts`, `auth.ts`, `database.ts`). Pages didn't change how they call the adapters.
+  - **Real with Supabase:** email + password sign-up with email verification, log in, log out, password reset (email link → "Choose a new password" page), profiles (name, language, belt, interests), watch progress, bookmarks, Ask JLM requests (new ones **only** through `create_request()`, so tier limits are checked on the server), coaching waitlist, notices, and the coaching places count (`coaching_places_used()`). The /admin inbox, settings, categories, videos and courses save to the tables too; row-level security refuses these for anyone who isn't an admin.
+  - **Subscriptions are read-only from the website.** Paid access is read from the `subscriptions` table; only the server (the Stripe webhook, Phase 5) will write it. With Supabase on, the checkout and portal stand-ins say payments aren't connected instead of simulating them.
+  - **Delete account:** goes through a Vercel function, `api/delete-account.ts`, because deleting a login needs the secret key. It needs `SUPABASE_SECRET_KEY` (or `SUPABASE_SERVICE_ROLE_KEY`) set in Vercel. It doesn't work under plain `npm run dev`, which doesn't run `/api` functions (use `vercel dev`).
+  - **Owner steps in the Supabase dashboard:** Authentication → Sign In / Providers → Email: keep "Confirm email" on. Authentication → URL Configuration: set the Site URL to the live address, and add the redirect URLs `https://estudio58bjj.com/**`, the Vercel preview address with `/**`, and `http://localhost:5173/**`. Without these, confirmation and reset links won't come back to the site. Make Jean an admin from the SQL editor (server only): `insert into public.user_roles (user_id, role) select id, 'admin' from auth.users where email = '<Jean's email>';`
+  - **To test member pages before Stripe:** a test account only gets access once its `subscriptions` row says so. Set it in the SQL editor, e.g. `update public.subscriptions set tier = 'review', status = 'active' where user_id = '<id>';`. Undo it before launch.
+  - Not checked: `npm install`, `npm run build` / TypeScript, and any run against the real Supabase project. The machine used for Phase 3 had no Node, so none of this has been run. Do these first, then test sign-up, confirmation, log in, reset, log out, save, progress, Ask JLM limits and delete account in both languages.
+  - Still demo, on purpose: payments (Phase 5; one-off €18.99 questions are refused until the webhook can create them), video playback and uploads (Phase 6), and emails from the site such as Ask JLM and waitlist emails (Phase 7). Supabase sends the confirmation and reset emails itself. Its templates are English by default. **[OPEN]** Translate them in Authentication → Emails (the member's language is saved as `lang` in their sign-up data).
+  - Content: the database starts with no videos or courses, and an empty FAQ (the draft FAQ was demo data only). Add them in /admin. The achievements text in `site_settings` was shortened slightly in the migration (e.g. "Polaris Champion and veteran"). Check it in /admin → Site settings.
 - Stripe account: set up and verified by the owner. Use test mode only.
 - Domain estudio58bjj.com: purchased on Cloudflare.
-- Nothing built yet.
+- Next: run `npm install && npm run build` on the Phase 3 branch and fix any errors, merge the pull request, set the Supabase values in Vercel (Phase 2), then test Phase 3 as above. After that, Phase 4: admin (videos, courses).

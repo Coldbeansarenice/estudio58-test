@@ -21,13 +21,18 @@ export function activeTier(m: Member | null | undefined): TierId | null {
   return hasAccess(m) ? m.subscription.tier : null;
 }
 
-export function coachingPlacesUsed(members: Member[]): number {
-  return members.filter((m) => m.role !== 'admin' && m.subscription.tier === 'coaching'
+type PlacesData = { members: Member[]; coachingUsed?: number | null };
+
+/** Coaching places taken. With Supabase, members can't see each other's plans,
+ *  so the server's count (coaching_places_used()) is used when it is known. */
+export function coachingPlacesUsed(data: PlacesData): number {
+  if (typeof data.coachingUsed === 'number') return data.coachingUsed;
+  return data.members.filter((m) => m.role !== 'admin' && m.subscription.tier === 'coaching'
     && (m.subscription.status === 'active' || m.subscription.status === 'past_due')).length;
 }
 
-export function coachingFull(members: Member[], settings: SiteSettings): boolean {
-  return coachingPlacesUsed(members) >= settings.coachingPlaces;
+export function coachingFull(data: PlacesData, settings: SiteSettings): boolean {
+  return coachingPlacesUsed(data) >= settings.coachingPlaces;
 }
 
 function startOfMonth(d = new Date()) { return new Date(d.getFullYear(), d.getMonth(), 1); }

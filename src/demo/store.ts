@@ -22,6 +22,8 @@ export interface DemoState {
   settings: SiteSettings;
   outbox: OutboxEmail[];
   sessionMemberId: string | null;
+  /** Coaching places taken, as counted by the server. null = count from `members` (demo). */
+  coachingUsed: number | null;
 }
 
 const clone = <T,>(v: T): T => JSON.parse(JSON.stringify(v));
@@ -39,6 +41,7 @@ let state: DemoState = {
   settings: clone(seedSettings),
   outbox: [],
   sessionMemberId: null,
+  coachingUsed: null,
 };
 
 const listeners = new Set<() => void>();
